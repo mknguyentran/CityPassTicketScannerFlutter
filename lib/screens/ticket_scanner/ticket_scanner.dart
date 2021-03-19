@@ -75,7 +75,13 @@ class _TicketScannerState extends State<TicketScanner> {
 
   void _submitCode(String code) {
     setState(() {
-      result = Barcode(code, BarcodeFormat.qrcode, [1, 2]);
+      if (code.toUpperCase() == "ABC001") {
+        result = Barcode(RESULT_ADULT_TICKET, BarcodeFormat.qrcode, [1, 2]);
+      } else if (code.toUpperCase() == "ABC002") {
+        result = Barcode(RESULT_CHILD_TICKET, BarcodeFormat.qrcode, [1, 2]);
+      } else {
+        result = Barcode(RESULT_NOT_AVAILABLE, BarcodeFormat.qrcode, [1, 2]);
+      }
     });
     _displayResult();
     controller.pauseCamera();
@@ -316,7 +322,7 @@ class Result extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  'ID: ZHG76NKUY231HQW1',
+                  'ID: ABC001',
                   style: TextStyle(
                     color: _foregroundColor,
                     fontSize: 20,

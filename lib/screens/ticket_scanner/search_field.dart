@@ -48,6 +48,8 @@ class SearchField extends StatelessWidget {
           ),
           contentPadding: EdgeInsets.symmetric(
             horizontal: kDefaultPadding,
+          ).add(
+            EdgeInsets.only(top: 12),
           ),
         ),
       ),
