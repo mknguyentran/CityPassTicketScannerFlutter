@@ -1,7 +1,10 @@
 import 'dart:io';
 
 import 'package:citypass_ticket_scanner/constants.dart';
+import 'package:citypass_ticket_scanner/screens/login/login.dart';
+import 'package:citypass_ticket_scanner/screens/ticket_scanner/search_field.dart';
 import 'package:citypass_ticket_scanner/size_config.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_beep/flutter_beep.dart';
@@ -18,7 +21,7 @@ class _TicketScannerState extends State<TicketScanner> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   Barcode result;
   QRViewController controller;
-  Color _backgroundColor = lightGrayBackground;
+  Color _backgroundColor = darkGrayBackground;
   Color _foregroundColor = textBlack;
   bool flashIsOn = false;
 
@@ -70,10 +73,18 @@ class _TicketScannerState extends State<TicketScanner> {
     });
   }
 
+  void _submitCode(String code) {
+    setState(() {
+      result = Barcode(code, BarcodeFormat.qrcode, [1, 2]);
+    });
+    _displayResult();
+    controller.pauseCamera();
+  }
+
   void _removeResult() {
     setState(() {
       result = null;
-      _backgroundColor = lightGrayBackground;
+      _backgroundColor = darkGrayBackground;
       _foregroundColor = textBlack;
     });
     controller.resumeCamera();
@@ -82,6 +93,7 @@ class _TicketScannerState extends State<TicketScanner> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: _backgroundColor,
       appBar: _buildAppBar(),
       body: Padding(
@@ -91,35 +103,68 @@ class _TicketScannerState extends State<TicketScanner> {
           children: [
             Expanded(
               flex: 1,
-              child: IconButton(
-                icon: flashIsOn
-                    ? Icon(
-                        Icons.flash_on_rounded,
-                        color: _foregroundColor,
-                      )
-                    : Icon(
-                        Icons.flash_off_rounded,
-                        color: _foregroundColor,
-                      ),
-                onPressed: _onToggleFlash,
-              ),
-            ),
-            Expanded(
-              flex: 5,
-              child: Container(
-                clipBehavior: Clip.hardEdge,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: QRView(
-                  key: qrKey,
-                  onQRViewCreated: _onQRViewCreated,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: SearchField(
+                  hintText: "Nhập mã thủ công",
+                  boxShadow: [kDefaultShadow],
+                  onSubmitted: (value) => _submitCode(value),
                 ),
               ),
             ),
             Expanded(
               flex: 5,
+              child: Stack(
+                children: [
+                  Container(
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: QRView(
+                      key: qrKey,
+                      onQRViewCreated: _onQRViewCreated,
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: IconButton(
+                      iconSize: 35,
+                      icon: flashIsOn
+                          ? Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(0.6),
+                              ),
+                              child: Icon(
+                                Icons.flash_on_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            )
+                          : Container(
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black.withOpacity(0.6),
+                              ),
+                              child: Icon(
+                                Icons.flash_off_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                      onPressed: _onToggleFlash,
+                    ),
+                  )
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 6,
               child: GestureDetector(
                   onTap: _removeResult,
                   child: Result(
