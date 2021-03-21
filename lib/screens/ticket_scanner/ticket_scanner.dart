@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:citypass_ticket_scanner/constants.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_beep/flutter_beep.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:http/http.dart' as http;
 
 class TicketScanner extends StatefulWidget {
   @override
@@ -390,7 +392,26 @@ class Result extends StatelessWidget {
                               ),
                             )),
                         child: Text("Chấp nhận"),
-                        onPressed: onButtonPressed,
+                        onPressed: () async {
+                          const url = 'https://fcm.googleapis.com/fcm/send';
+                          const header = {
+                            "Content-Type": "application/json",
+                            "Authorization": "key=AAAA1gnIPJY:APA91bH_711owa1s4RUT9GpVKOSZ6Ft72GVm-fN2552R0xYszpL3LAtzI7kPnHpHESPwjfuarYJ3dOTHhTJcV6wm2BORexeBdsJnLSWfObpMKpToWShsAihSDpVLP2b79heURoLC-ko_",
+                          };
+
+                          var currentTime = DateTime.now();
+
+                          var request = {
+                            "notification": {
+                              "title": "Check-in thành công tại Đầm Sen",
+                              "body": "Bạn đã sử dụng thành công Vé Đầm Sen Khô - Người lớn vào lúc " + currentTime.toString(),
+                            },
+                            "priority": "high",
+                            "to": "fzUIYYnyRNGsemFZDsCjeS:APA91bGyAyKFokJXA_0GydiwBicoTeQhvohPAs9gjYL7p4mKqsKELtWtaPPpxDFV2QY7o9OywA20klH8Mvals7ZwsYs2ahjm0g-hZYTFi0fDxT6U4-uZ_D21ZFBvODMHJnYooZ1IIQgE",
+                          };
+
+                          await http.post(url, headers: header, body: json.encode(request));
+                        },
                       ),
                     ),
                   ],
