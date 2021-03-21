@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:citypass_ticket_scanner/constants.dart';
 import 'package:citypass_ticket_scanner/models/check_user_pass.dart';
+import 'package:citypass_ticket_scanner/models/ticket_type.dart';
 import 'package:citypass_ticket_scanner/screens/ticket_scanner/search_field.dart';
 import 'package:citypass_ticket_scanner/service/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/size_config.dart';
@@ -13,19 +14,32 @@ import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 
 class TicketScanner extends StatefulWidget {
+  final List<TicketType> ticketTypeList;
+  final TicketType currentTicket;
+
+  const TicketScanner({
+    Key key,
+    @required this.ticketTypeList,
+    @required this.currentTicket,
+  }) : super(key: key);
   @override
   _TicketScannerState createState() => _TicketScannerState();
 }
 
 class _TicketScannerState extends State<TicketScanner> {
-  List<String> ticketTypes = ["Vé Đầm Sen Khô", "Vé Đầm Sen Nước"];
-  String _currentTicket = "Vé Đầm Sen Khô";
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController controller;
   Color _backgroundColor = darkGrayBackground;
   Color _foregroundColor = textBlack;
   bool _flashIsOn = false, _isLoading = false;
   var _result;
+  TicketType _currentTicket;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTicket = widget.currentTicket;
+  }
 
   // In order to get hot reload to work we need to pause the camera if the platform
   // is android, or resume the camera if the platform is iOS.
@@ -193,10 +207,10 @@ class _TicketScannerState extends State<TicketScanner> {
             style: TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
           ),
           VerticalSpacing(of: 3),
-          DropdownButton<String>(
+          DropdownButton<TicketType>(
             isDense: true,
             dropdownColor: primaryLightColor,
-            value: _currentTicket,
+            value: widget.currentTicket,
             icon: Icon(
               Icons.arrow_drop_down,
               color: Colors.white,
@@ -210,16 +224,20 @@ class _TicketScannerState extends State<TicketScanner> {
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
-            onChanged: (String newValue) {
-              setState(() {
-                _removeResult();
-                _currentTicket = newValue;
-              });
+            onChanged: (TicketType selectedTicket) {
+              if (selectedTicket != _currentTicket) {
+                setState(
+                  () {
+                    _currentTicket = selectedTicket;
+                  },
+                );
+              }
             },
-            items: ticketTypes.map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
+            items: widget.ticketTypeList
+                .map<DropdownMenuItem<TicketType>>((TicketType value) {
+              return DropdownMenuItem<TicketType>(
                 value: value,
-                child: Text(value),
+                child: Text(value.name),
               );
             }).toList(),
           )
@@ -232,7 +250,7 @@ class _TicketScannerState extends State<TicketScanner> {
     controller.pauseCamera();
     toggleLoading(true);
     CheckUserPassRequest request =
-        CheckUserPassRequest(CURRENT_TICKET_TYPE, code);
+        CheckUserPassRequest(_currentTicket.id.toString(), code);
     var result = await CheckUserPassService().checkUserPass(request);
     _displayResult(result);
     toggleLoading(false);
@@ -244,7 +262,7 @@ class _TicketScannerState extends State<TicketScanner> {
       controller.pauseCamera();
       toggleLoading(true);
       CheckUserPassRequest request =
-          CheckUserPassRequest(CURRENT_TICKET_TYPE, scanData.code);
+          CheckUserPassRequest(_currentTicket.id.toString(), scanData.code);
       var result = await CheckUserPassService().checkUserPass(request);
       _displayResult(result);
       toggleLoading(false);
@@ -285,7 +303,7 @@ class Result extends StatelessWidget {
         return "Vé không hợp lệ";
         break;
       case CheckUserPassResult.INVALID:
-        return "Mã QR không hợp lệ";
+        return "Không hợp lệ";
         break;
       case CheckUserPassResult.ERROR:
         return "Đã có lỗi xảy ra. Vui lòng thủ lại. ";

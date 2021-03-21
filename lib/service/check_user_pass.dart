@@ -12,7 +12,7 @@ class CheckUserPassService {
     };
     var uri = Uri.https(
       BASE_URL,
-      CHECK_USER_PASS,
+      CHECK_USER_PASS_PATH,
       queryParameters,
     );
     http.Response response = await http.get(uri);
