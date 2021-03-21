@@ -19,7 +19,7 @@ class TodayHeader extends StatelessWidget {
         Text(
           "Đã quét hôm nay",
           style: TextStyle(
-              fontSize: 30,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
               color: subtitleTextColor),
         ),
@@ -41,12 +41,12 @@ class TodayHeader extends StatelessWidget {
                   children: [
                     Text(
                       adultAmount.toString(),
-                      style: TextStyle(fontSize: 60, color: primaryDarkColor),
+                      style: TextStyle(fontSize: 50, color: primaryDarkColor),
                     ),
                     VerticalSpacing(of: 30),
                     Text(
                       "Vé người lớn",
-                      style: TextStyle(fontSize: 25, color: primaryDarkColor),
+                      style: TextStyle(fontSize: 20, color: primaryDarkColor),
                     )
                   ],
                 ),
@@ -67,12 +67,12 @@ class TodayHeader extends StatelessWidget {
                   children: [
                     Text(
                       childrenAmount.toString(),
-                      style: TextStyle(fontSize: 60, color: primaryDarkColor),
+                      style: TextStyle(fontSize: 50, color: primaryDarkColor),
                     ),
                     VerticalSpacing(of: 30),
                     Text(
                       "Vé trẻ em",
-                      style: TextStyle(fontSize: 25, color: primaryDarkColor),
+                      style: TextStyle(fontSize: 20, color: primaryDarkColor),
                     )
                   ],
                 ),

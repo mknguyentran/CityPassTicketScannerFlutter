@@ -1,16 +1,16 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:citypass_ticket_scanner/constants.dart';
-import 'package:citypass_ticket_scanner/screens/login/login.dart';
+import 'package:citypass_ticket_scanner/models/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/screens/ticket_scanner/search_field.dart';
+import 'package:citypass_ticket_scanner/service/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/size_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_beep/flutter_beep.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:http/http.dart' as http;
+import 'package:loading_overlay/loading_overlay.dart';
 
 class TicketScanner extends StatefulWidget {
   @override
@@ -21,11 +21,11 @@ class _TicketScannerState extends State<TicketScanner> {
   List<String> ticketTypes = ["Vé Đầm Sen Khô", "Vé Đầm Sen Nước"];
   String _currentTicket = "Vé Đầm Sen Khô";
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-  Barcode result;
   QRViewController controller;
   Color _backgroundColor = darkGrayBackground;
   Color _foregroundColor = textBlack;
-  bool flashIsOn = false;
+  bool _flashIsOn = false, _isLoading = false;
+  var _result;
 
   // In order to get hot reload to work we need to pause the camera if the platform
   // is android, or resume the camera if the platform is iOS.
@@ -39,149 +39,136 @@ class _TicketScannerState extends State<TicketScanner> {
     }
   }
 
-  void _displayResult() {
+  void _displayResult(var result) {
     var bgColor, fgColor;
-    switch (result.code) {
-      case RESULT_ADULT_TICKET:
+    if (result != null) {
+      print(result);
+      if (result is CheckUserPassResponse) {
         bgColor = Colors.green;
         fgColor = Colors.white;
         FlutterBeep.playSysSound(1394);
-        break;
-      case RESULT_CHILD_TICKET:
-        bgColor = Colors.green;
-        fgColor = Colors.white;
-        FlutterBeep.playSysSound(1394);
-        break;
-      case RESULT_EXPIRED:
+      } else if (result is CheckUserPassResult) {
         bgColor = Colors.red[400];
         fgColor = Colors.white;
         FlutterBeep.playSysSound(iOSSoundIDs.JBL_Cancel);
-        break;
-      case RESULT_NOT_AVAILABLE:
-        bgColor = Colors.red[400];
-        fgColor = Colors.white;
-        FlutterBeep.playSysSound(iOSSoundIDs.JBL_Cancel);
-        break;
-      case ALREADY_SCANNED:
-        bgColor = Colors.yellow[700];
-        fgColor = textBlack;
-        FlutterBeep.playSysSound(iOSSoundIDs.JBL_NoMatch);
-        break;
-      default:
-    }
-    setState(() {
-      _backgroundColor = bgColor;
-      _foregroundColor = fgColor;
-    });
-  }
-
-  void _submitCode(String code) {
-    setState(() {
-      if (code.toUpperCase() == "ABC001") {
-        result = Barcode(RESULT_ADULT_TICKET, BarcodeFormat.qrcode, [1, 2]);
-      } else if (code.toUpperCase() == "ABC002") {
-        result = Barcode(RESULT_CHILD_TICKET, BarcodeFormat.qrcode, [1, 2]);
       } else {
-        result = Barcode(RESULT_NOT_AVAILABLE, BarcodeFormat.qrcode, [1, 2]);
+        bgColor = darkGrayBackground;
+        fgColor = textBlack;
       }
-    });
-    _displayResult();
-    controller.pauseCamera();
+      setState(() {
+        _backgroundColor = bgColor;
+        _foregroundColor = fgColor;
+        _result = result;
+      });
+    }
   }
 
   void _removeResult() {
     setState(() {
-      result = null;
+      _result = null;
       _backgroundColor = darkGrayBackground;
       _foregroundColor = textBlack;
     });
     controller.resumeCamera();
   }
 
+  void toggleLoading(bool isLoading) {
+    setState(() {
+      _isLoading = isLoading;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: _backgroundColor,
-      appBar: _buildAppBar(),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: kDefaultPadding, vertical: 15),
-        child: Column(
-          children: [
-            Expanded(
-              flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: SearchField(
-                  hintText: "Nhập mã thủ công",
-                  boxShadow: [kDefaultShadow],
-                  onSubmitted: (value) => _submitCode(value),
+    return LoadingOverlay(
+      isLoading: _isLoading,
+      color: Colors.black87,
+      progressIndicator: const CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(primaryLightColor),
+      ),
+      child: Scaffold(
+        resizeToAvoidBottomInset: false,
+        backgroundColor: _backgroundColor,
+        appBar: _buildAppBar(),
+        body: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: kDefaultPadding, vertical: 15),
+          child: Column(
+            children: [
+              Expanded(
+                flex: 1,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: SearchField(
+                    hintText: "Nhập mã thủ công",
+                    boxShadow: [kDefaultShadow],
+                    onSubmitted: (value) => _submitCode(value),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              flex: 5,
-              child: Stack(
-                children: [
-                  Container(
-                    clipBehavior: Clip.hardEdge,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(10),
+              Expanded(
+                flex: 5,
+                child: Stack(
+                  children: [
+                    Container(
+                      clipBehavior: Clip.hardEdge,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: QRView(
+                        key: qrKey,
+                        onQRViewCreated: _onQRViewCreated,
+                      ),
                     ),
-                    child: QRView(
-                      key: qrKey,
-                      onQRViewCreated: _onQRViewCreated,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: IconButton(
-                      iconSize: 35,
-                      icon: flashIsOn
-                          ? Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.black.withOpacity(0.6),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: IconButton(
+                        iconSize: 35,
+                        icon: _flashIsOn
+                            ? Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.black.withOpacity(0.6),
+                                ),
+                                child: Icon(
+                                  Icons.flash_on_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              )
+                            : Container(
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.black.withOpacity(0.6),
+                                ),
+                                child: Icon(
+                                  Icons.flash_off_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                               ),
-                              child: Icon(
-                                Icons.flash_on_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            )
-                          : Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.black.withOpacity(0.6),
-                              ),
-                              child: Icon(
-                                Icons.flash_off_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                      onPressed: _onToggleFlash,
-                    ),
-                  )
-                ],
+                        onPressed: _onToggleFlash,
+                      ),
+                    )
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              flex: 6,
-              child: GestureDetector(
-                  onTap: _removeResult,
-                  child: Result(
-                    result: result,
-                    foregroundColor: _foregroundColor,
-                    onButtonPressed: _removeResult,
+              Expanded(
+                  flex: 6,
+                  child: GestureDetector(
+                    onTap: _removeResult,
+                    child: Result(
+                      result: _result,
+                      foregroundColor: _foregroundColor,
+                      onButtonPressed: _removeResult,
+                    ),
                   )),
-            )
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -241,14 +228,26 @@ class _TicketScannerState extends State<TicketScanner> {
     );
   }
 
+  void _submitCode(String code) async {
+    controller.pauseCamera();
+    toggleLoading(true);
+    CheckUserPassRequest request =
+        CheckUserPassRequest(CURRENT_TICKET_TYPE, code);
+    var result = await CheckUserPassService().checkUserPass(request);
+    _displayResult(result);
+    toggleLoading(false);
+  }
+
   void _onQRViewCreated(QRViewController controller) {
     this.controller = controller;
-    controller.scannedDataStream.listen((scanData) {
-      setState(() {
-        result = scanData;
-      });
-      _displayResult();
+    controller.scannedDataStream.listen((scanData) async {
       controller.pauseCamera();
+      toggleLoading(true);
+      CheckUserPassRequest request =
+          CheckUserPassRequest(CURRENT_TICKET_TYPE, scanData.code);
+      var result = await CheckUserPassService().checkUserPass(request);
+      _displayResult(result);
+      toggleLoading(false);
     });
   }
 
@@ -256,7 +255,7 @@ class _TicketScannerState extends State<TicketScanner> {
     await controller.toggleFlash();
     var flashStatus = await controller.getFlashStatus();
     setState(() {
-      flashIsOn = flashStatus;
+      _flashIsOn = flashStatus;
     });
   }
 
@@ -276,26 +275,20 @@ class Result extends StatelessWidget {
   })  : _foregroundColor = foregroundColor,
         super(key: key);
 
-  final Barcode result;
+  final result;
   final Color _foregroundColor;
   final Function() onButtonPressed;
 
-  String _getResultText(String result) {
+  String _getResultText(CheckUserPassResult result) {
     switch (result) {
-      case RESULT_ADULT_TICKET:
-        return "Vé người lớn";
+      case CheckUserPassResult.NOT_AVAILABLE:
+        return "Vé không hợp lệ";
         break;
-      case RESULT_CHILD_TICKET:
-        return "Vé trẻ em";
+      case CheckUserPassResult.INVALID:
+        return "Mã QR không hợp lệ";
         break;
-      case RESULT_EXPIRED:
-        return "Combo đã hết hạn";
-        break;
-      case RESULT_NOT_AVAILABLE:
-        return "Combo không khả dụng cho vé này";
-        break;
-      case ALREADY_SCANNED:
-        return "Combo đã từng được sử dụng tại đây";
+      case CheckUserPassResult.ERROR:
+        return "Đã có lỗi xảy ra. Vui lòng thủ lại. ";
         break;
       default:
         return "";
@@ -305,8 +298,7 @@ class Result extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (result != null) {
-      if (result.code == RESULT_ADULT_TICKET ||
-          result.code == RESULT_CHILD_TICKET) {
+      if (result is CheckUserPassResponse) {
         return Padding(
           padding: const EdgeInsets.only(top: 20),
           child: Column(
@@ -314,7 +306,7 @@ class Result extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  _getResultText(result.code),
+                  "Hợp lệ",
                   style: TextStyle(
                     color: _foregroundColor,
                     fontWeight: FontWeight.bold,
@@ -324,157 +316,28 @@ class Result extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  'ID: ABC001',
+                  'ID: ${(result as CheckUserPassResponse).userPassId}',
                   style: TextStyle(
                     color: _foregroundColor,
                     fontSize: 20,
                   ),
                 ),
               ),
-              Expanded(
-                child: Text(
-                  'Hết hạn ngày 31/03/2021',
-                  style: TextStyle(
-                    color: _foregroundColor,
-                    fontSize: 20,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SizedBox(
-                      width: getProportionateScreenWidth(150),
-                      height: getProportionateScreenHeight(50),
-                      child: ElevatedButton(
-                        style: ButtonStyle(
-                            backgroundColor:
-                                MaterialStateProperty.all(Colors.white),
-                            textStyle: MaterialStateProperty.all(
-                              TextStyle(
-                                fontFamily: "SFProRounded",
-                                fontSize: 20,
-                              ),
-                            ),
-                            foregroundColor:
-                                MaterialStateProperty.all(Colors.red),
-                            shape: MaterialStateProperty.all(
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                            )),
-                        child: Text(
-                          "Từ chối",
-                          style: TextStyle(),
-                        ),
-                        onPressed: onButtonPressed,
-                      ),
-                    ),
-                    SizedBox(
-                      width: getProportionateScreenWidth(150),
-                      height: getProportionateScreenHeight(50),
-                      child: ElevatedButton(
-                        style: ButtonStyle(
-                            backgroundColor:
-                                MaterialStateProperty.all(Colors.white),
-                            textStyle: MaterialStateProperty.all(
-                              TextStyle(
-                                fontFamily: "SFProRounded",
-                                fontSize: 20,
-                              ),
-                            ),
-                            foregroundColor:
-                                MaterialStateProperty.all(Colors.green),
-                            shape: MaterialStateProperty.all(
-                              RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                            )),
-                        child: Text("Chấp nhận"),
-                        onPressed: () async {
-                          const url = 'https://fcm.googleapis.com/fcm/send';
-                          const header = {
-                            "Content-Type": "application/json",
-                            "Authorization": "key=AAAA1gnIPJY:APA91bH_711owa1s4RUT9GpVKOSZ6Ft72GVm-fN2552R0xYszpL3LAtzI7kPnHpHESPwjfuarYJ3dOTHhTJcV6wm2BORexeBdsJnLSWfObpMKpToWShsAihSDpVLP2b79heURoLC-ko_",
-                          };
-
-                          var currentTime = DateTime.now();
-
-                          var request = {
-                            "notification": {
-                              "title": "Check-in thành công tại Đầm Sen",
-                              "body": "Bạn đã sử dụng thành công Vé Đầm Sen Khô - Người lớn vào lúc " + currentTime.toString(),
-                            },
-                            "priority": "high",
-                            "to": "fzUIYYnyRNGsemFZDsCjeS:APA91bGyAyKFokJXA_0GydiwBicoTeQhvohPAs9gjYL7p4mKqsKELtWtaPPpxDFV2QY7o9OywA20klH8Mvals7ZwsYs2ahjm0g-hZYTFi0fDxT6U4-uZ_D21ZFBvODMHJnYooZ1IIQgE",
-                          };
-
-                          await http.post(url, headers: header, body: json.encode(request));
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              )
             ],
           ),
         );
-      } else if (result.code == RESULT_EXPIRED ||
-          result.code == RESULT_NOT_AVAILABLE) {
+      } else if (result is CheckUserPassResult) {
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              _getResultText(result.code),
+              _getResultText(result),
               style: TextStyle(
                 color: _foregroundColor,
                 fontWeight: FontWeight.bold,
                 fontSize: 40,
               ),
               textAlign: TextAlign.center,
-            ),
-          ],
-        );
-      } else if (result.code == ALREADY_SCANNED) {
-        return Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  _getResultText(result.code),
-                  style: TextStyle(
-                    color: _foregroundColor,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 40,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  'Đã quét vào lúc 09:25, 18/03/2021',
-                  style: TextStyle(
-                    color: _foregroundColor,
-                    fontSize: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      } else {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Mã QR không hợp lệ',
-              style: TextStyle(
-                color: Colors.red[300],
-                fontSize: 30,
-              ),
             ),
           ],
         );

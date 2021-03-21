@@ -2,11 +2,13 @@ import 'dart:math';
 
 import 'package:citypass_ticket_scanner/constants.dart';
 import 'package:citypass_ticket_scanner/mockup_data/mockup_ticket_scanning_entry.dart';
+import 'package:citypass_ticket_scanner/models/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/models/ticket_scanning_entry.dart';
 import 'package:citypass_ticket_scanner/screens/home_screen/components/ticket_scanning_entry_list.dart';
 import 'package:citypass_ticket_scanner/screens/home_screen/components/today_header.dart';
 import 'package:citypass_ticket_scanner/screens/login/login.dart';
 import 'package:citypass_ticket_scanner/screens/ticket_scanner/ticket_scanner.dart';
+import 'package:citypass_ticket_scanner/service/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/size_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
