@@ -13,6 +13,7 @@ class TicketScanningEntryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    var _fontSize = 15.0;
     List<TicketScanningEntry> list = List.from(child);
     list.sort((a, b) {
       return b.scannedAt.compareTo(a.scannedAt);
@@ -38,11 +39,11 @@ class TicketScanningEntryList extends StatelessWidget {
                     children: [
                       Text(
                         "ID: ${list[index].id}".toUpperCase(),
-                        style: TextStyle(fontSize: 18),
+                        style: TextStyle(fontSize: _fontSize),
                       ),
                       Text(
                           simpleDateAndTimeFormat.format(list[index].scannedAt),
-                          style: TextStyle(fontSize: 18)),
+                          style: TextStyle(fontSize: _fontSize)),
                     ],
                   ),
                   VerticalSpacing(),
@@ -50,19 +51,20 @@ class TicketScanningEntryList extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(list[index].ticketName,
-                          style: TextStyle(fontSize: 18)),
+                          style: TextStyle(fontSize: _fontSize)),
                       if (list[index].status == RESULT_SUCCESS)
                         Text("Thành công",
-                            style:
-                                TextStyle(fontSize: 18, color: Colors.green)),
+                            style: TextStyle(
+                                fontSize: _fontSize, color: Colors.green)),
                       if (list[index].status == RESULT_REJECTED)
                         Text("Từ chối",
                             style: TextStyle(
-                                fontSize: 18, color: Colors.yellow[700])),
+                                fontSize: _fontSize,
+                                color: Colors.yellow[700])),
                       if (list[index].status == RESULT_FAILED)
                         Text("Thất bại",
                             style: TextStyle(
-                                fontSize: 18, color: Colors.red[300])),
+                                fontSize: _fontSize, color: Colors.red[300])),
                     ],
                   )
                 ],

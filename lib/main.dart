@@ -1,4 +1,5 @@
 import 'package:citypass_ticket_scanner/screens/home_screen/home_screen.dart';
+import 'package:citypass_ticket_scanner/screens/ticket_scanner/ticket_scanner.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -6,7 +7,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'SFProRounded',
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: HomeScreen(),
+      home: TicketScanner(),
     );
   }
 }

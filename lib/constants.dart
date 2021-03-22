@@ -71,3 +71,11 @@ const String RESULT_CHILD_TICKET = "child ticket";
 const String ALREADY_SCANNED = "already scanned";
 const String RESULT_EXPIRED = "expired";
 const String RESULT_NOT_AVAILABLE = "not available";
+
+const BASE_URL = "citypasswebapi.azurewebsites.net";
+const CHECK_USER_PASS_PATH = "/api/user-passes/check-user-pass-valid";
+const TICKET_TYPE_PATH = "/api/ticket-types";
+
+const CURRENT_TICKET_TYPE = "E1CCA79D-2B3A-4085-4CD8-08D8E6AC6832";
+
+const CURRENT_ATTRACTION = "Dinh Độc Lập";
