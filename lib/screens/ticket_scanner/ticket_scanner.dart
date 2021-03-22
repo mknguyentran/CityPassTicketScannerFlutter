@@ -5,22 +5,19 @@ import 'package:citypass_ticket_scanner/models/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/models/ticket_type.dart';
 import 'package:citypass_ticket_scanner/screens/ticket_scanner/search_field.dart';
 import 'package:citypass_ticket_scanner/service/check_user_pass.dart';
+import 'package:citypass_ticket_scanner/service/ticket_type.dart';
 import 'package:citypass_ticket_scanner/size_config.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_beep/flutter_beep.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:loading_overlay/loading_overlay.dart';
 
 class TicketScanner extends StatefulWidget {
-  final List<TicketType> ticketTypeList;
-  final TicketType currentTicket;
-
   const TicketScanner({
     Key key,
-    @required this.ticketTypeList,
-    @required this.currentTicket,
   }) : super(key: key);
   @override
   _TicketScannerState createState() => _TicketScannerState();
@@ -33,12 +30,13 @@ class _TicketScannerState extends State<TicketScanner> {
   Color _foregroundColor = textBlack;
   bool _flashIsOn = false, _isLoading = false;
   var _result;
+  Future<List<TicketType>> _ticketTypeList;
   TicketType _currentTicket;
 
   @override
   void initState() {
     super.initState();
-    _currentTicket = widget.currentTicket;
+    _ticketTypeList = TicketTypeService().getCurrentAttractionTicketType();
   }
 
   // In order to get hot reload to work we need to pause the camera if the platform
@@ -53,6 +51,22 @@ class _TicketScannerState extends State<TicketScanner> {
     }
   }
 
+  void _playSuccessSound() {
+    if (Platform.isAndroid) {
+      // FlutterBeep.playSysSound(AndroidSoundIDs.TONE_CDMA_ABBR_ALERT);
+    } else if (Platform.isIOS) {
+      FlutterBeep.playSysSound(1394);
+    }
+  }
+
+  void _playFailedSound() {
+    if (Platform.isAndroid) {
+      // FlutterBeep.playSysSound(AndroidSoundIDs.TONE_SUP_ERROR);
+    } else if (Platform.isIOS) {
+      FlutterBeep.playSysSound(iOSSoundIDs.JBL_Cancel);
+    }
+  }
+
   void _displayResult(var result) {
     var bgColor, fgColor;
     if (result != null) {
@@ -60,11 +74,11 @@ class _TicketScannerState extends State<TicketScanner> {
       if (result is CheckUserPassResponse) {
         bgColor = Colors.green;
         fgColor = Colors.white;
-        FlutterBeep.playSysSound(1394);
+        _playSuccessSound();
       } else if (result is CheckUserPassResult) {
         bgColor = Colors.red[400];
         fgColor = Colors.white;
-        FlutterBeep.playSysSound(iOSSoundIDs.JBL_Cancel);
+        _playFailedSound();
       } else {
         bgColor = darkGrayBackground;
         fgColor = textBlack;
@@ -94,101 +108,131 @@ class _TicketScannerState extends State<TicketScanner> {
 
   @override
   Widget build(BuildContext context) {
-    return LoadingOverlay(
-      isLoading: _isLoading,
-      color: Colors.black87,
-      progressIndicator: const CircularProgressIndicator(
-        valueColor: AlwaysStoppedAnimation<Color>(primaryLightColor),
-      ),
-      child: Scaffold(
-        resizeToAvoidBottomInset: false,
-        backgroundColor: _backgroundColor,
-        appBar: _buildAppBar(),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: kDefaultPadding, vertical: 15),
-          child: Column(
-            children: [
-              Expanded(
-                flex: 1,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: SearchField(
-                    hintText: "Nhập mã thủ công",
-                    boxShadow: [kDefaultShadow],
-                    onSubmitted: (value) => _submitCode(value),
+    initializeDateFormatting("vi_VN", null);
+    SizeConfig().init(context);
+    return FutureBuilder(
+        future: _ticketTypeList,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _currentTicket = (snapshot.data as List<TicketType>)[0];
+            return LoadingOverlay(
+              isLoading: _isLoading,
+              color: Colors.black87,
+              progressIndicator: const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(primaryLightColor),
+              ),
+              child: Scaffold(
+                resizeToAvoidBottomInset: false,
+                backgroundColor: _backgroundColor,
+                appBar: _buildAppBar(snapshot.data),
+                body: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: kDefaultPadding, vertical: 15),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8.0),
+                          child: SearchField(
+                            hintText: "Nhập mã thủ công",
+                            boxShadow: [kDefaultShadow],
+                            onSubmitted: (value) => _submitCode(value),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 5,
+                        child: Stack(
+                          children: [
+                            Container(
+                              clipBehavior: Clip.hardEdge,
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: QRView(
+                                key: qrKey,
+                                onQRViewCreated: _onQRViewCreated,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: IconButton(
+                                iconSize: 35,
+                                icon: _flashIsOn
+                                    ? Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.black.withOpacity(0.6),
+                                        ),
+                                        child: Icon(
+                                          Icons.flash_on_rounded,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      )
+                                    : Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.black.withOpacity(0.6),
+                                        ),
+                                        child: Icon(
+                                          Icons.flash_off_rounded,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                onPressed: _onToggleFlash,
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                          flex: 6,
+                          child: GestureDetector(
+                            onTap: _removeResult,
+                            child: Result(
+                              result: _result,
+                              foregroundColor: _foregroundColor,
+                              onButtonPressed: _removeResult,
+                            ),
+                          )),
+                    ],
                   ),
                 ),
               ),
-              Expanded(
-                flex: 5,
-                child: Stack(
-                  children: [
-                    Container(
-                      clipBehavior: Clip.hardEdge,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: QRView(
-                        key: qrKey,
-                        onQRViewCreated: _onQRViewCreated,
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: IconButton(
-                        iconSize: 35,
-                        icon: _flashIsOn
-                            ? Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.black.withOpacity(0.6),
-                                ),
-                                child: Icon(
-                                  Icons.flash_on_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              )
-                            : Container(
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.black.withOpacity(0.6),
-                                ),
-                                child: Icon(
-                                  Icons.flash_off_rounded,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                        onPressed: _onToggleFlash,
-                      ),
-                    )
-                  ],
+            );
+          } else {
+            return Scaffold(
+              body: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [primaryDarkColor, secondaryColor],
+                    begin: Alignment.bottomCenter,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  "CityPass Ticket Scanner",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 30,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              Expanded(
-                  flex: 6,
-                  child: GestureDetector(
-                    onTap: _removeResult,
-                    child: Result(
-                      result: _result,
-                      foregroundColor: _foregroundColor,
-                      onButtonPressed: _removeResult,
-                    ),
-                  )),
-            ],
-          ),
-        ),
-      ),
-    );
+            );
+          }
+        });
   }
 
-  AppBar _buildAppBar() {
+  AppBar _buildAppBar(List<TicketType> ticketTypeList) {
     var _brightness = Brightness.dark;
     return AppBar(
       shadowColor: secondaryColor,
@@ -210,7 +254,7 @@ class _TicketScannerState extends State<TicketScanner> {
           DropdownButton<TicketType>(
             isDense: true,
             dropdownColor: primaryLightColor,
-            value: widget.currentTicket,
+            value: _currentTicket,
             icon: Icon(
               Icons.arrow_drop_down,
               color: Colors.white,
@@ -233,11 +277,17 @@ class _TicketScannerState extends State<TicketScanner> {
                 );
               }
             },
-            items: widget.ticketTypeList
+            items: ticketTypeList
                 .map<DropdownMenuItem<TicketType>>((TicketType value) {
               return DropdownMenuItem<TicketType>(
                 value: value,
-                child: Text(value.name),
+                child: Text(
+                  value.name,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
               );
             }).toList(),
           )
@@ -339,6 +389,7 @@ class Result extends StatelessWidget {
                     color: _foregroundColor,
                     fontSize: 20,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             ],
@@ -368,8 +419,9 @@ class Result extends StatelessWidget {
             'Đặt mã QR nằm trong khung',
             style: TextStyle(
               color: fadedTextColor,
-              fontSize: 30,
+              fontSize: 25,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       );

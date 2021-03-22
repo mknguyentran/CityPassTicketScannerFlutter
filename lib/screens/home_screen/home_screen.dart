@@ -179,24 +179,24 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
-      actions: [
-        TextButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) {
-                    return LoginForm();
-                  },
-                ),
-              );
-            },
-            child: Text(
-              "Đăng xuất".toUpperCase(),
-              style:
-                  TextStyle(color: Colors.red[50], fontWeight: FontWeight.bold),
-            ))
-      ],
+      // actions: [
+      //   TextButton(
+      //       onPressed: () {
+      //         Navigator.push(
+      //           context,
+      //           CupertinoPageRoute(
+      //             builder: (context) {
+      //               return LoginForm();
+      //             },
+      //           ),
+      //         );
+      //       },
+      //       child: Text(
+      //         "Đăng xuất".toUpperCase(),
+      //         style:
+      //             TextStyle(color: Colors.red[50], fontWeight: FontWeight.bold),
+      //       ))
+      // ],
     );
   }
 }
@@ -226,10 +226,7 @@ class ScanButton extends StatelessWidget {
             Navigator.push(
               context,
               CupertinoPageRoute(builder: (context) {
-                return TicketScanner(
-                  ticketTypeList: ticketTypeList,
-                  currentTicket: currentTicket,
-                );
+                return TicketScanner();
               }),
             );
           }
