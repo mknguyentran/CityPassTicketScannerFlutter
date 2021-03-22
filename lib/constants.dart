@@ -76,6 +76,6 @@ const BASE_URL = "citypasswebapi.azurewebsites.net";
 const CHECK_USER_PASS_PATH = "/api/user-passes/check-user-pass-valid";
 const TICKET_TYPE_PATH = "/api/ticket-types";
 
-//Đổi cái này theo tên địa điểm
-const CURRENT_ATTRACTION = "Dinh Độc Lập";
+//Đổi cái này theo tên địa điểm rồi restart app
+const CURRENT_ATTRACTION = "Dinh Bảo Đại";
 
