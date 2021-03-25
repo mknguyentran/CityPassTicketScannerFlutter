@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:citypass_ticket_scanner/constants.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_beep/flutter_beep.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:loading_overlay/loading_overlay.dart';
+import 'package:http/http.dart' as http;
 
 class TicketScanner extends StatefulWidget {
   const TicketScanner({
@@ -311,12 +313,36 @@ class _TicketScannerState extends State<TicketScanner> {
     controller.scannedDataStream.listen((scanData) async {
       controller.pauseCamera();
       toggleLoading(true);
+      String tmp = scanData.code;
+      List<String> tmpList = tmp.split(' ');
       CheckUserPassRequest request =
-          CheckUserPassRequest(_currentTicket.id.toString(), scanData.code);
+          CheckUserPassRequest(_currentTicket.id.toString(), tmpList[0]);
       var result = await CheckUserPassService().checkUserPass(request);
+      if (result is CheckUserPassResponse) {
+        sendNotificationToDevice(tmpList[1], tmpList[0]);
+      }
       _displayResult(result);
       toggleLoading(false);
     });
+  }
+
+  void sendNotificationToDevice(String token, String id) async {
+    var url = 'https://fcm.googleapis.com/fcm/send';
+    var header = {
+      "Content-Type": "application/json",
+      "Authorization": "key=AAAAiDMS30E:APA91bHJGWSNc4YrYYX-Drg7-pjdVFNCnqI4Sr6Y3rPc17Mi5_U0CAklzgImy6E1Xd84EV4pEKZ9IrI_V_aIc7C3UWgP2oHseMWcAksas1ZFTFpmv9rPSLG3rVEQpghl_rwNN4Nr1zhc",
+    };
+    var currentTime = DateTime.now();
+    var request = {
+      "notification": {
+        "title": "Sử dụng Pass thành công",
+        "body": "Bạn đã sử dụng thành công Pass có ID $id vào lúc " + currentTime.toString(),
+      },
+      "priority": "high",
+      "to": token,
+    };
+
+    await http.post(url, headers: header, body: json.encode(request));
   }
 
   void _onToggleFlash() async {

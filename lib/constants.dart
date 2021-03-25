@@ -72,9 +72,9 @@ const String ALREADY_SCANNED = "already scanned";
 const String RESULT_EXPIRED = "expired";
 const String RESULT_NOT_AVAILABLE = "not available";
 
-const BASE_URL = "citypasswebapi.azurewebsites.net";
-const CHECK_USER_PASS_PATH = "/api/user-passes/check-user-pass-valid";
-const TICKET_TYPE_PATH = "/api/ticket-types";
+const BASE_URL = "citypassappservice.azurewebsites.net";
+const CHECK_USER_PASS_PATH = "/api/v1.0/user-passes/check-user-pass-valid";
+const TICKET_TYPE_PATH = "/api/v1.0/ticket-types";
 
 //Đổi cái này theo tên địa điểm rồi restart app
 const CURRENT_ATTRACTION = "Dinh Bảo Đại";
