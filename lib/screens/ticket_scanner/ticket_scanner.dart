@@ -30,7 +30,7 @@ class _TicketScannerState extends State<TicketScanner> {
   QRViewController controller;
   Color _backgroundColor = darkGrayBackground;
   Color _foregroundColor = textBlack;
-  bool _flashIsOn = false, _isLoading = false;
+  bool _flashIsOn = false, _isLoading = false, _isAcceptingScanData = true;
   var _result;
   Future<List<TicketType>> _ticketTypeList;
   TicketType _currentTicket;
@@ -101,6 +101,7 @@ class _TicketScannerState extends State<TicketScanner> {
       _foregroundColor = textBlack;
     });
     controller.resumeCamera();
+    _isAcceptingScanData = true;
   }
 
   void toggleLoading(bool isLoading) {
@@ -318,19 +319,22 @@ class _TicketScannerState extends State<TicketScanner> {
   void _onQRViewCreated(QRViewController controller) {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) async {
-      controller.pauseCamera();
-      toggleLoading(true);
-      String tmp = scanData.code;
-      List<String> tmpList = tmp.split(' ');
-      CheckUserPassRequest request =
-          CheckUserPassRequest(_currentTicket.id.toString(), tmpList[0]);
-      var result = await CheckUserPassService().checkUserPass(request);
-      // if (result is CheckUserPassResponse) {
-      //   sendNotificationToDevice(tmpList[1], tmpList[0]);
-      // }
-      _userDeviceToken = tmpList[1];
-      _displayResult(result);
-      toggleLoading(false);
+      if (_isAcceptingScanData) {
+        _isAcceptingScanData = false;
+        controller.pauseCamera();
+        toggleLoading(true);
+        String tmp = scanData.code;
+        List<String> tmpList = tmp.split(' ');
+        CheckUserPassRequest request =
+            CheckUserPassRequest(_currentTicket.id.toString(), tmpList[0]);
+        var result = await CheckUserPassService().checkUserPass(request);
+        // if (result is CheckUserPassResponse) {
+        //   sendNotificationToDevice(tmpList[1], tmpList[0]);
+        // }
+        _userDeviceToken = tmpList[1];
+        _displayResult(result);
+        toggleLoading(false);
+      }
     });
   }
 
