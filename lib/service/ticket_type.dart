@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:citypass_ticket_scanner/api_path.dart';
 import 'package:citypass_ticket_scanner/constants.dart';
-import 'package:citypass_ticket_scanner/models/check_user_pass.dart';
 import 'package:citypass_ticket_scanner/models/ticket_type.dart';
 import 'package:http/http.dart' as http;
 

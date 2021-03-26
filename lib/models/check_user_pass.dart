@@ -7,20 +7,16 @@ class CheckUserPassRequest {
 }
 
 class CheckUserPassResponse {
-  String usedAt;
-  String userPassId;
-  Object userPass;
-  String ticketTypeId;
-  String ticketType;
   Guid id;
+  String userPassId;
+  DateTime expiredAt;
+  bool isChildren;
 
   CheckUserPassResponse.fromJson(Map<String, dynamic> json)
       : id = Guid(json['id']),
-        usedAt = json['usedAt'],
         userPassId = json['userPassId'],
-        userPass = json['userPass'],
-        ticketTypeId = json['ticketTypeId'],
-        ticketType = json['ticketType'];
+        expiredAt = DateTime.parse(json['userPass']['willExpireAt']),
+        isChildren = json['userPass']['isChildren'];
 }
 
 enum CheckUserPassResult {

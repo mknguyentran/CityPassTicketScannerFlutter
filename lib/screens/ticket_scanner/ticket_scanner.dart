@@ -34,6 +34,7 @@ class _TicketScannerState extends State<TicketScanner> {
   var _result;
   Future<List<TicketType>> _ticketTypeList;
   TicketType _currentTicket;
+  String _userDeviceToken = "";
 
   @override
   void initState() {
@@ -195,15 +196,21 @@ class _TicketScannerState extends State<TicketScanner> {
                         ),
                       ),
                       Expanded(
-                          flex: 6,
-                          child: GestureDetector(
-                            onTap: _removeResult,
-                            child: Result(
-                              result: _result,
-                              foregroundColor: _foregroundColor,
-                              onButtonPressed: _removeResult,
-                            ),
-                          )),
+                        flex: 6,
+                        child: Result(
+                          result: _result,
+                          foregroundColor: _foregroundColor,
+                          onCancel: _removeResult,
+                          onAccept: _acceptTicket,
+                          notify: sendNotificationToDevice,
+                          userDeviceToken: _userDeviceToken,
+                          toggleLoading: toggleLoading,
+                          showSnackbar: (snackBar) {
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(snackBar);
+                          },
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -318,25 +325,43 @@ class _TicketScannerState extends State<TicketScanner> {
       CheckUserPassRequest request =
           CheckUserPassRequest(_currentTicket.id.toString(), tmpList[0]);
       var result = await CheckUserPassService().checkUserPass(request);
-      if (result is CheckUserPassResponse) {
-        sendNotificationToDevice(tmpList[1], tmpList[0]);
-      }
+      // if (result is CheckUserPassResponse) {
+      //   sendNotificationToDevice(tmpList[1], tmpList[0]);
+      // }
+      _userDeviceToken = tmpList[1];
       _displayResult(result);
       toggleLoading(false);
     });
+  }
+
+  Future<bool> _acceptTicket() async {
+    bool isAccepted = false;
+    try {
+      toggleLoading(true);
+      String ticketID = (_result as CheckUserPassResponse).id.toString();
+      isAccepted = await CheckUserPassService().acceptUserPass(ticketID);
+      toggleLoading(false);
+    } catch (e, s) {
+      print(s);
+    } finally {
+      toggleLoading(false);
+    }
+    return isAccepted;
   }
 
   void sendNotificationToDevice(String token, String id) async {
     var url = 'https://fcm.googleapis.com/fcm/send';
     var header = {
       "Content-Type": "application/json",
-      "Authorization": "key=AAAAiDMS30E:APA91bHJGWSNc4YrYYX-Drg7-pjdVFNCnqI4Sr6Y3rPc17Mi5_U0CAklzgImy6E1Xd84EV4pEKZ9IrI_V_aIc7C3UWgP2oHseMWcAksas1ZFTFpmv9rPSLG3rVEQpghl_rwNN4Nr1zhc",
+      "Authorization":
+          "key=AAAAiDMS30E:APA91bHJGWSNc4YrYYX-Drg7-pjdVFNCnqI4Sr6Y3rPc17Mi5_U0CAklzgImy6E1Xd84EV4pEKZ9IrI_V_aIc7C3UWgP2oHseMWcAksas1ZFTFpmv9rPSLG3rVEQpghl_rwNN4Nr1zhc",
     };
     var currentTime = DateTime.now();
     var request = {
       "notification": {
         "title": "Sử dụng Pass thành công",
-        "body": "Bạn đã sử dụng thành công Pass có ID $id vào lúc " + currentTime.toString(),
+        "body": "Bạn đã sử dụng thành công Pass có ID $id vào lúc " +
+            currentTime.toString(),
       },
       "priority": "high",
       "to": token,
@@ -365,13 +390,22 @@ class Result extends StatelessWidget {
     Key key,
     @required this.result,
     @required Color foregroundColor,
-    @required this.onButtonPressed,
+    @required this.onCancel,
+    @required this.onAccept,
+    @required this.notify,
+    @required this.toggleLoading,
+    @required this.userDeviceToken,
+    @required this.showSnackbar,
   })  : _foregroundColor = foregroundColor,
         super(key: key);
 
   final result;
   final Color _foregroundColor;
-  final Function() onButtonPressed;
+  final Function() onCancel, onAccept;
+  final Function(String, String) notify;
+  final Function(SnackBar) showSnackbar;
+  final Function(bool) toggleLoading;
+  final String userDeviceToken;
 
   String _getResultText(CheckUserPassResult result) {
     switch (result) {
@@ -393,6 +427,7 @@ class Result extends StatelessWidget {
   Widget build(BuildContext context) {
     if (result != null) {
       if (result is CheckUserPassResponse) {
+        CheckUserPassResponse _result = result;
         return Padding(
           padding: const EdgeInsets.only(top: 20),
           child: Column(
@@ -400,7 +435,7 @@ class Result extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  "Hợp lệ",
+                  _result.isChildren ? "Vé trẻ em" : "Vé người lớn",
                   style: TextStyle(
                     color: _foregroundColor,
                     fontWeight: FontWeight.bold,
@@ -410,7 +445,7 @@ class Result extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  'ID: ${(result as CheckUserPassResponse).userPassId}',
+                  'ID: ${_result.userPassId}',
                   style: TextStyle(
                     color: _foregroundColor,
                     fontSize: 20,
@@ -418,23 +453,164 @@ class Result extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
+              Expanded(
+                child: Text(
+                  'Hết hạn lúc: ${simpleDateAndTimeFormat.format(_result.expiredAt.add(Duration(hours: 7)))}',
+                  style: TextStyle(
+                    color: _foregroundColor,
+                    fontSize: 20,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SizedBox(
+                      width: getProportionateScreenWidth(150),
+                      height: getProportionateScreenHeight(50),
+                      child: ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStateProperty.all(Colors.white),
+                            textStyle: MaterialStateProperty.all(
+                              TextStyle(
+                                fontFamily: "SFProRounded",
+                                fontSize: 20,
+                              ),
+                            ),
+                            foregroundColor:
+                                MaterialStateProperty.all(Colors.red),
+                            shape: MaterialStateProperty.all(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                            )),
+                        child: Text(
+                          "Từ chối",
+                          style: TextStyle(),
+                        ),
+                        onPressed: () {
+                          onCancel();
+                          showSnackbar(
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              margin: const EdgeInsets.all(kDefaultPadding),
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              backgroundColor: Colors.white,
+                              content: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Đã từ chối",
+                                    style: TextStyle(
+                                      fontSize: 21,
+                                      color: Colors.red[400],
+                                    ),
+                                  ),
+                                  Icon(
+                                    CupertinoIcons.xmark,
+                                    color: Colors.red[400],
+                                    size: 21,
+                                  )
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: getProportionateScreenWidth(150),
+                      height: getProportionateScreenHeight(50),
+                      child: ElevatedButton(
+                        style: ButtonStyle(
+                            backgroundColor:
+                                MaterialStateProperty.all(Colors.white),
+                            textStyle: MaterialStateProperty.all(
+                              TextStyle(
+                                fontFamily: "SFProRounded",
+                                fontSize: 20,
+                              ),
+                            ),
+                            foregroundColor:
+                                MaterialStateProperty.all(Colors.green),
+                            shape: MaterialStateProperty.all(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                            )),
+                        child: Text("Chấp nhận"),
+                        onPressed: () async {
+                          toggleLoading(true);
+                          bool isAccepted = await onAccept();
+                          if (isAccepted && userDeviceToken.trim().isNotEmpty) {
+                            notify(userDeviceToken, _result.userPassId);
+                          }
+                          toggleLoading(false);
+                          onCancel();
+                          if (isAccepted) {
+                            showSnackbar(
+                              SnackBar(
+                                behavior: SnackBarBehavior.floating,
+                                margin: const EdgeInsets.all(kDefaultPadding),
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                backgroundColor: Colors.white,
+                                content: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Đã chấp nhận",
+                                      style: TextStyle(
+                                        fontSize: 21,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.green,
+                                      size: 21,
+                                    )
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              )
             ],
           ),
         );
       } else if (result is CheckUserPassResult) {
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _getResultText(result),
-              style: TextStyle(
-                color: _foregroundColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 40,
+        return GestureDetector(
+          onTap: onCancel,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _getResultText(result),
+                style: TextStyle(
+                  color: _foregroundColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 40,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+            ],
+          ),
         );
       }
     } else {
