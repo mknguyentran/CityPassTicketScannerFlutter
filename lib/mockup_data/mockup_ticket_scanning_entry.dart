@@ -32,7 +32,7 @@ TicketScanningEntry entry15 = TicketScanningEntry(
 );
 TicketScanningEntry entry16 = TicketScanningEntry(
   "ZHG76NKUY231HQW1",
-  DateTime(2021, 3, 19, 10, 1),
+  DateTime(2021, 3, 19, 10, 2),
   RESULT_FAILED,
   "Vé không khả dụng",
 );
